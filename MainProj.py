@@ -97,6 +97,12 @@ df_mensal = df.resample('ME').agg({
     'vento': 'mean'
 })
 
+df_mensal['mes'] = df_mensal.index.month
+df_mensal['mes_sin'] = np.sin(2 * np.pi * df_mensal['mes'] / 12)
+df_mensal['mes_cos'] = np.cos(2 * np.pi * df_mensal['mes'] / 12)
+
+df_mensal = df_mensal.drop(columns=['mes'])
+
 df_mensal = df_mensal.dropna()
 
 scaler = MinMaxScaler()
