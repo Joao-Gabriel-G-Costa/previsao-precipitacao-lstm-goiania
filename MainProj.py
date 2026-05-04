@@ -1,5 +1,6 @@
 import pandas as pd
 import glob
+import os
 import numpy as np
 import matplotlib.pyplot as plt
 import tensorflow as tf
@@ -14,7 +15,13 @@ np.random.seed(42)
 random.seed(42)
 tf.random.set_seed(42)
 
-arquivos = glob.glob(r'C:\Users\Admin\Downloads\IC\GYN_DADOS\*.CSV')
+base_dir = os.path.dirname(os.path.abspath(__file__))
+dados_path = os.path.join(base_dir, 'GYN_DADOS')
+
+arquivos = glob.glob(os.path.join(dados_path, '*.CSV')) + glob.glob(os.path.join(dados_path, '*.csv'))
+
+if len(arquivos) == 0:
+    raise FileNotFoundError('Nenhum CSV encontrado na pasta GYN_DADOS.')
 
 lista_df = []
 
@@ -66,6 +73,7 @@ for arquivo in arquivos:
     lista_df.append(df)
 
 df = pd.concat(lista_df, ignore_index=True)
+
 df = df.sort_values('datetime')
 df = df.drop_duplicates(subset='datetime')
 df.set_index('datetime', inplace=True)
