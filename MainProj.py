@@ -551,7 +551,62 @@ comparacao["Erro_Absoluto_LSTM"] = abs(
     - comparacao["Previsto_LSTM_mm"]
 )
 
-print("\nCOMPARACAO DAS PREVISOES")
+# Referencia climatologica: media historica de cada mes do ano,
+# calculada exclusivamente com a precipitacao valida do treino.
+climatologia_treino = (
+    df_mensal.iloc[:fim_treino]["precipitacao"]
+    .groupby(df_mensal.index[:fim_treino].month)
+    .mean()
+)
+
+meses_test = datas_test.month
+meses_sem_referencia = sorted(
+    set(meses_test) - set(climatologia_treino.dropna().index)
+)
+
+if meses_sem_referencia:
+    raise ValueError(
+        "Nao ha climatologia de treino valida para os meses: "
+        + str(meses_sem_referencia)
+    )
+
+climatologia_real = np.array(
+    [climatologia_treino.loc[mes] for mes in meses_test],
+    dtype=float
+)
+
+mae_climatologia = mean_absolute_error(
+    y_test_real, climatologia_real
+)
+rmse_climatologia = np.sqrt(
+    mean_squared_error(y_test_real, climatologia_real)
+)
+
+comparacao["Climatologia_Mensal_mm"] = climatologia_real
+comparacao["Erro_Absoluto_Climatologia"] = abs(
+    comparacao["Real_mm"] - comparacao["Climatologia_Mensal_mm"]
+)
+
+print("\\nRESULTADOS DA CLIMATOLOGIA MENSAL")
+print(f"MAE: {mae_climatologia:.2f} mm")
+print(f"RMSE: {rmse_climatologia:.2f} mm")
+
+resumo_metricas = pd.DataFrame({
+    "Modelo": ["LSTM", "Referencia sazonal", "Climatologia mensal"],
+    "MAE_mm": [mae, mae_baseline, mae_climatologia],
+    "RMSE_mm": [rmse, rmse_baseline, rmse_climatologia]
+})
+
+resumo_metricas.to_csv(
+    os.path.join(resultados_path, "resumo_metricas.csv"),
+    index=False,
+    encoding="utf-8-sig"
+)
+
+print("\\nRESUMO DOS TRES METODOS")
+print(resumo_metricas.to_string(index=False))
+
+print("\\nCOMPARACAO DAS PREVISOES")
 print(comparacao.to_string(index=False))
 
 comparacao.to_csv(
@@ -587,6 +642,13 @@ plt.plot(
     label="Referencia sazonal",
     linestyle="--",
     alpha=0.8
+)
+
+plt.plot(
+    datas_test,
+    climatologia_real,
+    label="Climatologia mensal (treino)",
+    linestyle=":"
 )
 
 plt.title("Precipitacao Mensal - Real vs Previsto")
