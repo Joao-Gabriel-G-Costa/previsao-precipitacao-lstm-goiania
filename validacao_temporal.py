@@ -123,9 +123,10 @@ def main():
 
         escala, minimo = scaler.scale_[0], scaler.min_[0]
         real = (y_a - minimo) / escala
+        # Mesma data-limite do treino da LSTM; nao inclui a janela de validacao.
         climatologia = (
-            df.iloc[:inicio_avaliacao]["precipitacao"]
-            .groupby(df.index[:inicio_avaliacao].month)
+            df.iloc[:inicio_validacao]["precipitacao"]
+            .groupby(df.index[:inicio_validacao].month)
             .mean()
         )
         meses = df.index[idx_a].month
