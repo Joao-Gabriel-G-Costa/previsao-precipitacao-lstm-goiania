@@ -1,20 +1,21 @@
+# Ambientes virtuais
 .venv/
 venv/
 env/
+
+# Python
 __pycache__/
-*.pyc
-*.pyo
-*.pyd
+*.py[cod]
+*.egg-info/
 build/
 dist/
-*.egg-info/
+
+# Editor e sistema
 .vscode/
 .DS_Store
 Thumbs.db
+
+# Saidas geradas pelo projeto
+resultados/
 precipitacao_mensal_*.csv
 *.log
-.venv/
-venv/
-__pycache__/
-*.pyc
-resultados/
