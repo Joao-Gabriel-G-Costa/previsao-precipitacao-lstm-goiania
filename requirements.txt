@@ -1,0 +1,7 @@
+# Dependencias diretas do projeto.
+# Versoes exatas nao fixadas: registrar um ambiente validado em etapa futura.
+pandas
+numpy
+matplotlib
+scikit-learn
+tensorflow
