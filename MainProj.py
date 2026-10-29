@@ -696,6 +696,129 @@ print(experimentos_sementes.to_string(index=False))
 print("RESUMO DOS EXPERIMENTOS")
 print(resumo_sementes.to_string(index=False))
 
+
+# ============================================================
+# COMPARACAO DE ARQUITETURAS: APENAS VALIDACAO
+# ============================================================
+
+# Nao usar X_test/y_test para selecionar arquitetura.
+# Tres sementes por arquitetura reduzem a influencia da inicializacao.
+SEMENTES_ARQUITETURAS = [42, 123, 456]
+ARQUITETURAS = ["Atual", "Modelo A", "Modelo B", "Modelo C"]
+
+
+def construir_arquitetura(nome):
+    entrada = Input(shape=(PASSOS, X_train.shape[2]))
+    if nome == "Atual":
+        camadas = [
+            entrada,
+            LSTM(64, return_sequences=True),
+            Dropout(0.2),
+            LSTM(32),
+            Dense(16, activation="relu"),
+            Dense(1, activation="linear")
+        ]
+    elif nome == "Modelo A":
+        camadas = [entrada, LSTM(32), Dense(1, activation="linear")]
+    elif nome == "Modelo B":
+        camadas = [
+            entrada, LSTM(32), Dropout(0.2),
+            Dense(1, activation="linear")
+        ]
+    elif nome == "Modelo C":
+        camadas = [entrada, LSTM(16), Dense(1, activation="linear")]
+    else:
+        raise ValueError(f"Arquitetura desconhecida: {nome}")
+
+    modelo = Sequential(camadas)
+    modelo.compile(optimizer="adam", loss="mse")
+    return modelo
+
+
+y_val_mm = (y_val - minimo) / escala
+resultados_arquiteturas = []
+
+for nome_arquitetura in ARQUITETURAS:
+    for semente_arquitetura in SEMENTES_ARQUITETURAS:
+        print(
+            f"Validando {nome_arquitetura}, "
+            f"semente {semente_arquitetura}..."
+        )
+        tf.keras.backend.clear_session()
+        random.seed(semente_arquitetura)
+        np.random.seed(semente_arquitetura)
+        tf.random.set_seed(semente_arquitetura)
+
+        modelo_arquitetura = construir_arquitetura(nome_arquitetura)
+        historico_arquitetura = modelo_arquitetura.fit(
+            X_train, y_train,
+            epochs=EPOCAS,
+            batch_size=BATCH_SIZE,
+            validation_data=(X_val, y_val),
+            callbacks=[EarlyStopping(
+                monitor="val_loss",
+                patience=15,
+                restore_best_weights=True
+            )],
+            shuffle=False,
+            verbose=0
+        )
+
+        previsao_val = modelo_arquitetura.predict(
+            X_val, verbose=0
+        ).reshape(-1)
+        previsao_val_mm = np.maximum(
+            (previsao_val - minimo) / escala, 0
+        )
+
+        resultados_arquiteturas.append({
+            "Arquitetura": nome_arquitetura,
+            "Semente": semente_arquitetura,
+            "MAE_Validacao_mm": mean_absolute_error(
+                y_val_mm, previsao_val_mm
+            ),
+            "RMSE_Validacao_mm": np.sqrt(
+                mean_squared_error(y_val_mm, previsao_val_mm)
+            ),
+            "Epocas": len(historico_arquitetura.history["loss"])
+        })
+
+experimentos_arquiteturas = pd.DataFrame(resultados_arquiteturas)
+experimentos_arquiteturas.to_csv(
+    os.path.join(resultados_path, "experimentos_arquiteturas.csv"),
+    index=False,
+    encoding="utf-8-sig"
+)
+
+resumo_arquiteturas = (
+    experimentos_arquiteturas.groupby("Arquitetura", as_index=False)
+    .agg(
+        MAE_Medio_Validacao_mm=("MAE_Validacao_mm", "mean"),
+        MAE_Desvio_Validacao_mm=("MAE_Validacao_mm", "std"),
+        RMSE_Medio_Validacao_mm=("RMSE_Validacao_mm", "mean"),
+        RMSE_Desvio_Validacao_mm=("RMSE_Validacao_mm", "std")
+    )
+    .sort_values("MAE_Medio_Validacao_mm")
+    .reset_index(drop=True)
+)
+
+resumo_arquiteturas.to_csv(
+    os.path.join(resultados_path, "resumo_arquiteturas.csv"),
+    index=False,
+    encoding="utf-8-sig"
+)
+
+print("COMPARACAO DE ARQUITETURAS (SOMENTE VALIDACAO)")
+print(resumo_arquiteturas.to_string(index=False))
+print(
+    "Melhor arquitetura na validacao:",
+    resumo_arquiteturas.iloc[0]["Arquitetura"]
+)
+print(
+    "Esta escolha e exploratoria; nenhuma nova arquitetura "
+    "foi avaliada no conjunto de teste."
+)
+
 # Os graficos e as previsoes individuais continuam usando a semente 42.
 
 print("\\nCOMPARACAO DAS PREVISOES")
