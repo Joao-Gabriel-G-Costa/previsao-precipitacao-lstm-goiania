@@ -20,6 +20,7 @@ from tensorflow.keras.callbacks import EarlyStopping
 # ============================================================
 
 SEED = 42
+SEMENTES_EXPERIMENTO = [42, 123, 456, 789, 2026]
 PASSOS = 12
 EPOCAS = 80
 BATCH_SIZE = 8
@@ -605,6 +606,97 @@ resumo_metricas.to_csv(
 
 print("\\nRESUMO DOS TRES METODOS")
 print(resumo_metricas.to_string(index=False))
+
+
+# ============================================================
+# EXPERIMENTO DE ESTABILIDADE: CINCO SEMENTES
+# ============================================================
+
+# O modelo principal acima ja foi treinado com a semente 42.
+# Todas as execucoes usam o mesmo conjunto de teste.
+resultados_sementes = [{
+    "Semente": SEED,
+    "MAE_mm": mae,
+    "RMSE_mm": rmse,
+    "Epocas": len(historico.history["loss"])
+}]
+
+for semente in SEMENTES_EXPERIMENTO:
+    if semente == SEED:
+        continue
+
+    print(f"Treinando semente {semente}...")
+    tf.keras.backend.clear_session()
+    random.seed(semente)
+    np.random.seed(semente)
+    tf.random.set_seed(semente)
+
+    modelo_teste = Sequential([
+        Input(shape=(PASSOS, X_train.shape[2])),
+        LSTM(64, return_sequences=True),
+        Dropout(0.2),
+        LSTM(32),
+        Dense(16, activation="relu"),
+        Dense(1, activation="linear")
+    ])
+    modelo_teste.compile(optimizer="adam", loss="mse")
+
+    historico_teste = modelo_teste.fit(
+        X_train, y_train,
+        epochs=EPOCAS,
+        batch_size=BATCH_SIZE,
+        validation_data=(X_val, y_val),
+        callbacks=[EarlyStopping(
+            monitor="val_loss",
+            patience=15,
+            restore_best_weights=True
+        )],
+        shuffle=False,
+        verbose=0
+    )
+
+    p = modelo_teste.predict(X_test, verbose=0).reshape(-1)
+    p_mm = np.maximum((p - minimo) / escala, 0)
+
+    resultados_sementes.append({
+        "Semente": semente,
+        "MAE_mm": mean_absolute_error(y_test_real, p_mm),
+        "RMSE_mm": np.sqrt(mean_squared_error(y_test_real, p_mm)),
+        "Epocas": len(historico_teste.history["loss"])
+    })
+
+experimentos_sementes = pd.DataFrame(resultados_sementes)
+experimentos_sementes.to_csv(
+    os.path.join(resultados_path, "experimentos_sementes.csv"),
+    index=False,
+    encoding="utf-8-sig"
+)
+
+resumo_sementes = pd.DataFrame({
+    "Metrica": ["MAE_mm", "RMSE_mm"],
+    "Media_LSTM": [
+        experimentos_sementes["MAE_mm"].mean(),
+        experimentos_sementes["RMSE_mm"].mean()
+    ],
+    "Desvio_Padrao_LSTM": [
+        experimentos_sementes["MAE_mm"].std(ddof=1),
+        experimentos_sementes["RMSE_mm"].std(ddof=1)
+    ],
+    "Referencia_Sazonal": [mae_baseline, rmse_baseline],
+    "Climatologia_Mensal": [mae_climatologia, rmse_climatologia]
+})
+resumo_sementes.to_csv(
+    os.path.join(resultados_path, "resumo_sementes.csv"),
+    index=False,
+    encoding="utf-8-sig"
+)
+
+print("RESULTADOS DAS CINCO SEMENTES")
+print(experimentos_sementes.to_string(index=False))
+print("RESUMO DOS EXPERIMENTOS")
+print(resumo_sementes.to_string(index=False))
+
+# Os graficos e as previsoes individuais continuam usando a semente 42.
 
 print("\\nCOMPARACAO DAS PREVISOES")
 print(comparacao.to_string(index=False))
