@@ -13,3 +13,8 @@ dist/
 Thumbs.db
 precipitacao_mensal_*.csv
 *.log
+.venv/
+venv/
+__pycache__/
+*.pyc
+resultados/
