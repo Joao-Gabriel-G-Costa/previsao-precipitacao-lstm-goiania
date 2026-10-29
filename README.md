@@ -54,29 +54,42 @@ Se o Windows apresentar erro de caminho longo ao instalar o TensorFlow, é poss�
 
 Os arquivos de entrada devem estar em `GYN_DADOS/`.
 
-## Resultados
+## Resultados e documentação científica
 
-O programa imprime **MAE, MSE e RMSE** do conjunto de teste, além de comparar a LSTM com uma referência sazonal simples: a precipitação observada no mesmo mês do ano anterior.
+O projeto inclui comparações com **referência sazonal ingênua** (mesmo mês do ano anterior) e **climatologia mensal** (média histórica daquele mês calculada somente com dados de treinamento).
 
-A pasta `resultados/` é criada automaticamente e contém:
+No teste cronológico principal, com **19 meses válidos**, os resultados registrados foram:
 
-- `diagnostico_mensal.csv` — totais de chuva e cobertura horária;
-- `comparacao_previsoes.csv` — valores reais, previstos e referência sazonal;
-- `precipitacao_mensal_goiania_multivariado.csv` — série mensal preparada;
-- `real_vs_previsto.png` — comparação gráfica das previsões;
-- `perda_modelo.png` — curvas de treinamento e validação.
+| Método | MAE (mm) | RMSE (mm) |
+| --- | ---: | ---: |
+| Climatologia mensal | **60,84** | **82,25** |
+| LSTM principal (semente 42) | 64,59 | 89,44 |
+| Referência sazonal | 89,84 | 127,03 |
 
-**Esses arquivos são locais, são sobrescritos em novas execuções bem-sucedidas e não são versionados no Git.** Se uma execução falhar antes de gerar determinado arquivo, a versão anterior poderá permanecer na pasta.
+Na validação temporal exploratória com cortes em 2016, 2018 e 2020, a climatologia também apresentou o menor MAE médio (42,83 mm), seguida do Modelo A — LSTM(32) (56,42 mm) e da LSTM principal (57,78 mm). **Esses números descrevem execuções específicas, não uma previsão operacional nem evidência de superioridade universal.**
 
-Os valores das métricas podem variar entre ambientes e execuções. Resultados isolados não comprovam desempenho generalizável.
+Leia o **[relatório técnico completo](RELATORIO_TECNICO.md)** para metodologia, comparação de arquiteturas, sementes, limitações e interpretação dos resultados.
 
-## Próximas etapas de pesquisa
+### Execução dos experimentos
 
-1. Investigar os meses ausentes e a qualidade dos registros originais do INMET.
-2. Justificar e testar o critério de cobertura horária.
-3. Comparar com a climatologia mensal calculada apenas sobre o treinamento.
-4. Executar experimentos com múltiplas sementes e validação temporal progressiva.
-5. Avaliar arquiteturas menores sem usar o conjunto de teste para selecionar hiperparâmetros.
+```powershell
+python MainProj.py
+python validacao_temporal.py
+```
+
+Execute `MainProj.py` primeiro: ele gera a série mensal utilizada por `validacao_temporal.py`. O primeiro script também executa os experimentos de sementes e arquiteturas, portanto pode demorar.
+
+A pasta `resultados/` contém, entre outros:
+
+- `diagnostico_mensal.csv` — totais e cobertura de precipitação;
+- `precipitacao_mensal_goiania_multivariado.csv` — série mensal;
+- `comparacao_previsoes.csv` e `resumo_metricas.csv` — teste principal e referências;
+- `experimentos_sementes.csv` e `resumo_sementes.csv` — estabilidade da LSTM;
+- `experimentos_arquiteturas.csv` e `resumo_arquiteturas.csv` — comparação de arquiteturas;
+- `validacao_temporal_detalhada.csv` e `validacao_temporal_resumo.csv` — validação histórica;
+- `real_vs_previsto.png` e `perda_modelo.png` — gráficos do modelo principal.
+
+**Os arquivos gerados são locais e não são versionados no Git.** Cada execução bem-sucedida sobrescreve os arquivos que produz. Se a execução falhar antes da gravação, algum arquivo antigo pode permanecer.
 
 ## Estrutura
 
@@ -85,6 +98,8 @@ Os valores das métricas podem variar entre ambientes e execuções. Resultados 
 ├── GYN_DADOS/
 ├── Documentação/
 ├── MainProj.py
+├── validacao_temporal.py
+├── RELATORIO_TECNICO.md
 ├── requirements.txt
 ├── .gitignore
 └── README.md
